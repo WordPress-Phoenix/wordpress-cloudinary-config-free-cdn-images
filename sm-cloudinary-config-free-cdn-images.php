@@ -32,18 +32,22 @@ class SM_Cloudinary_Config_Free_CDN_Images{
             return;
         }
         //filter the image URL's on downsize so all functions that create thumbnails and featured images are modified to pull from the CDN
-        add_filter('image_downsize', array(get_called_class(), 'convert_image_to_cloudinary_pull_request'), 1, 3);
+        add_filter('image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3);
         add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
     }
     
-    static function convert_image_to_cloudinary_pull_request($override, $id, $size) {
+    static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {
+    	$account = static::get_option_value('cloud_name');
+    	if(empty($account)){
+    	    return false;
+    	}
+    	
     	$img_url = wp_get_attachment_url($id);
     	$meta = wp_get_attachment_metadata($id);
     	$width = $height = 0;
     	$is_intermediate = false;
     	$img_url_basename = wp_basename($img_url);
-    	$account = static::get_option_value('cloud_name');
     	$cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
     	
     	// try for a new style intermediate size
@@ -61,12 +65,14 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     			$is_intermediate = true;
     		}
     	}
+    	//make sure we have height and width values
     	if ( !$width && !$height && isset( $meta['width'], $meta['height'] ) ) {
     		// any other type: use the real image
     		$width = $meta['width'];
     		$height = $meta['height'];
     	}
-    
+        
+        //if image found then modify it with cloudinary optimimized replacement
     	if ( $img_url) {
     		// we have the actual image size, but might need to further constrain it if content_width is narrower
     		list( $width, $height ) = image_constrain_size_for_editor( $width, $height, $size );
@@ -80,11 +86,8 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     
     // Add settings link on plugin page
     static function add_plugin_settings_link($links) { 
-      $settings_link = '<a href="#pluginsettings" onClick="jQuery(\'#'.strtolower(get_called_class()).'\').toggle();return false;">Settings</a>';
+      $settings_link = '<a href="'.admin_url( 'options-media.php#section_sm_cloudinary_config_free_cdn_images' ).'">Settings</a>';
       array_unshift($links, $settings_link); 
-      //Todo: build ajax settings form
-      //$settings_link_form = '<div id="'.strtolower(get_called_class()).'" style="display: none;" class="wrapper">'.static::build_settings_form().'</div>'; 
-      //array_push($links, $settings_link_form);
       return $links; 
     }
     
@@ -94,7 +97,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      	// Add the section to reading settings so we can add our fields to it
      	add_settings_section(
     	    $field_prefix_from_class,
-    		str_replace('_', ' ', get_called_class()).'<span id="section_'.$field_prefix_from_class.'"></span>',
+    		'<span id="section_'.$field_prefix_from_class.'"></span>'.str_replace('_', ' ', get_called_class()),
     		'__return_empty_string',
     		'media'
     	);
@@ -124,18 +127,6 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         if(!empty($print)){
             echo $field_html;
         }
-    }
-    
-    //currently not used, but will be used for TODO: for ajax settings page form updates
-    //current issue is that you can't embed a form in a form, so you can't use ajaxSubmit helper
-    //will require custom ajax requests and responses secured by custom nonce
-    static function build_settings_form(){
-        $form  = '<div method="post" action="options.php" id="myOptionsFormDiv">';
-        $form .= '<label for="'.strtolower(get_called_class()).'_clouydinary_user" style="color: #000;"><input name="'.strtolower(get_called_class()).'_cloud_name" type="input" id="'.strtolower(get_called_class()).'_username" value="'.static::get_option_value('username').'">
-	Your Cloudinary cloud name can be found on your <a href="https://cloudinary.com/console" target="_blank">dashboard</a></label>';
-	    $form .= '<input name="myformbutton" id="myformbutton" type="button" class="button" value="Save" onClick="jQuery(this).parent().each" />';
-        $form .= '</div>'; 
-        return $form;
     }
     
     static function get_option_value($option){

@@ -6,7 +6,7 @@ WordPress plugin that simplifies the use of cloudinary on your site as an image 
 When used on WinterIsComing.net, without making any other changes, it reduced pageload speed of the GoT homepage by 1 full second. The only difference is the use of Cloudinary as a proxy for images. Cloudinary doesn't just serve as a CDN though, they optimize images and serve difference sizes "on the fly" in the best format possible for your browser to minimize bandwidth and maximize performance. 
 
 Watch this video: 
-http://www.webpagetest.org/video/view.php?id=150623_02657f2d04fe9ca6f24ca7ca845fa7c1f034c6e9
+[Compare regular images to Cloudinary Loaded images on a news homepage](http://www.webpagetest.org/video/view.php?id=150623_02657f2d04fe9ca6f24ca7ca845fa7c1f034c6e9)
 
 Next question, whats it cost? It operates on a "freemium" model. So you can start for free, but if you think your site is going to go over the limits of the free account, do note the very high entry cost of ~$50 a month just to get anything bigger. Is there a risk? With this plugin, no. To move away from using Cloudinary, just disable the plugin and your site goes back to serving the images from your hosting company, unoptimized.
 

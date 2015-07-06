@@ -106,7 +106,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      	// Add the field with the names and function to use for our new settings, put it in our new section
      	add_settings_field(
     		$field_prefix_from_class.'_'.$field_name_1,
-    		'Cloudinary Username',
+    		'Cloudinary Cloud Name',
     		array(get_called_class(), 'wordpress_settings_api_form_field_builder'),
     		'media',
     		$field_prefix_from_class,
@@ -124,7 +124,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     
     function wordpress_settings_api_form_field_builder($args, $print = true) {
         $field_prefix_from_class = strtolower(get_called_class());
-        $field_html = '<input name="'.$args['name'].'" id="'.$args['name'].'" type="'.$args['type'].'" value="'.get_option( $args['name'] ).'" autocomplete="off" /> '.$args['description'];
+        $field_html = '<input name="'.$args['name'].'" id="'.$args['name'].'" type="'.$args['type'].'" value="'.get_option( $args['name'] ).'" autocomplete="off" /> <br />'.$args['description'];
         if(!empty($print)){
             echo $field_html;
         }

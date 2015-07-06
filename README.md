@@ -2,6 +2,7 @@
 WordPress plugin that simplifies the use of cloudinary on your site as an image CDN using as needed image fetching.
 
 ## Installation
+- Register for a [Cloudinary Account](http://cloudinary.com/invites/lpov9zyyucivvxsnalc5/zm41jatc7d1qufgtlnna) if you don't already have one
 - Clone the repository into your plugins folder OR download the Zip from Github, extract the zip and rename the folder thats extracted to "sm-cloudinary-config-free-cdn-images".
 - Upload the folder from your local "plugins" into your remote server.
 - Login to your WordPress site, goto plugins, find and activate the plugin.

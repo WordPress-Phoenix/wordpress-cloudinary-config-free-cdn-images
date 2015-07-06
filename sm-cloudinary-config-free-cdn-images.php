@@ -35,6 +35,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         add_filter('image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3);
         add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
+        add_action( 'activated_plugin', array(get_called_class(), 'activated') );
     }
     
     static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {
@@ -134,14 +135,29 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     }
     
     /**
-     * Activate the plugin
+     * Activate the plugin (before activation)
      *
      * @since   1.0
      * @return  void
      */
-    public static function activate() {
-		
+    public static function activate($plugin) {
+        
     } // END public static function activate
+    
+    /**
+     * Activated the plugin (after activation)
+     *
+     * @since   1.0
+     * @return  void
+     */
+    public static function activated($plugin) {
+        if( $plugin == plugin_basename( __FILE__ ) ) {
+            if(!empty(static::get_option_value('cloud_name'))){
+                exit (wp_redirect(admin_url( 'options-media.php#section_sm_cloudinary_config_free_cdn_images' )) );
+            }
+        }
+    } // END public static function activate
+    
     /**
      * Deactivate the plugin
      *

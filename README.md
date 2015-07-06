@@ -21,9 +21,14 @@ Next question, whats it cost? It operates on a "freemium" model. So you can star
 
 Another fun fact is that it has facial recognition. We built "cropping to faces" as the default in this plugin, so you get this feature automatically. Here is an example where face recognition really helps make your thumbnails useful instead of providing users a bad user experience.
 
-Crop typically made by WordPress: 
+Crop typically made by WordPress:
+
 http://res.cloudinary.com/demo/image/upload/w_150,h_150,c_thumb/face_top.jpg
+
 ![bad_crop](http://res.cloudinary.com/demo/image/upload/w_150,h_150,c_thumb/face_top.jpg)
 
-Crop made by face-recog  with Cloudinary: http://res.cloudinary.com/demo/image/upload/w_100,h_100,c_thumb,g_faces/face_top.jpg
+Crop made by face-recog  with Cloudinary:
+
+http://res.cloudinary.com/demo/image/upload/w_100,h_100,c_thumb,g_faces/face_top.jpg
+
 ![good_crop](http://res.cloudinary.com/demo/image/upload/w_100,h_100,c_thumb,g_faces/face_top.jpg)

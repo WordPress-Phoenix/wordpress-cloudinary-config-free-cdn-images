@@ -36,6 +36,30 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
         add_action( 'activated_plugin', array(get_called_class(), 'activated') );
+    	add_filter( 'the_content', array( get_called_class(), 'change_image_uri'), 20 );
+    }
+    
+    /**
+     * Filter the raw post content and replace any images that are "local" with cloudinary images
+     */ 
+    static function change_image_uri($content) {
+        if (!in_the_loop()) {
+            return $content;
+        }
+        $account = static::get_option_value('cloud_name');
+        $cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
+    	$site_url = get_bloginfo( 'url' );
+    	$site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
+    	//prepare for multisite 
+    	if(is_multisite()){
+        	global $blog_id;
+            //fix old rewrites to go directly to the file on multisite subfolder
+            $content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $content );
+    	} 
+	    //move anything trying to load wp-content files to pull them from the cdn
+	    $content = str_replace( $site_url . '/wp-content/', $cdn_fetch_prefix.$site_url_no_protocal . '/wp-content/', $content );
+	
+        return $content;
     }
     
     static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {

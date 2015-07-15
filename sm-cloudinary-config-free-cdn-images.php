@@ -5,7 +5,7 @@
  * Plugin URI: http://sethcarstens.com
  * Description: Enable your site to connect with your (freemium) Cloudinary account for a nearly configuration free setup. All you need to input in your username!
  * Author: Seth Carstens
- * Version: 0.9.0
+ * Version: 1.0.0
  * Author URI: http://sethcarstens.com
  * License: GPL 3.0
  * Text Domain: sm-ccfci
@@ -36,13 +36,13 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
         add_action( 'activated_plugin', array(get_called_class(), 'activated') );
-    	add_filter( 'the_content', array( get_called_class(), 'change_image_uri'), 20 );
+    	add_filter( 'the_content', array( get_called_class(), 'convert_the_content_images_to_cloudinary_pull_request'), 20 );
     }
     
     /**
      * Filter the raw post content and replace any images that are "local" with cloudinary images
      */ 
-    static function change_image_uri($content) {
+    static function convert_the_content_images_to_cloudinary_pull_request($content) {
         if (!in_the_loop()) {
             return $content;
         }
@@ -62,6 +62,9 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         return $content;
     }
     
+    /**
+     * Filter all thumbnails and image attachments typically used in template parts, archive loops, and widgets
+     */
     static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {
     	$account = static::get_option_value('cloud_name');
     	if(empty($account)){
@@ -109,13 +112,18 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     	return false;
     }
     
-    // Add settings link on plugin page
+    /**
+     * Add settings link on plugin page
+     */
     static function add_plugin_settings_link($links) { 
       $settings_link = '<a href="'.admin_url( 'options-media.php#section_sm_cloudinary_config_free_cdn_images' ).'">Settings</a>';
       array_unshift($links, $settings_link); 
       return $links; 
     }
     
+    /**
+     * Use the WordPress settings API to register settings in the media.php admin page
+     */
     static function register_wordpress_settings(){
         $field_prefix_from_class = strtolower(get_called_class());
         $field_name_1 = 'cloud_name';
@@ -146,6 +154,9 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      	register_setting( 'media', $field_prefix_from_class.'_'.$field_name_1 );
     }
     
+    /**
+     * Form Builder function for Settings API Callback
+     */
     function wordpress_settings_api_form_field_builder($args, $print = true) {
         $field_prefix_from_class = strtolower(get_called_class());
         $field_html = '<input name="'.$args['name'].'" id="'.$args['name'].'" type="'.$args['type'].'" value="'.get_option( $args['name'] ).'" autocomplete="off" /> <br />'.$args['description'];
@@ -154,6 +165,9 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         }
     }
     
+    /**
+     * custom get_option function that automatically gets class prefixed site options
+     */
     static function get_option_value($option){
         return get_option(strtolower(get_called_class()).'_'.$option);
     }
@@ -170,6 +184,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     
     /**
      * Activated the plugin (after activation)
+     * Redirects the user to the custom options if no option value is found
      *
      * @since   1.0
      * @return  void

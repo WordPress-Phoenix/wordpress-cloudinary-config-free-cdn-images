@@ -47,18 +47,18 @@ class SM_Cloudinary_Config_Free_CDN_Images{
             return $content;
         }
         $account = static::get_option_value('cloud_name');
-        $cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
+        $cdn_fetch_prefix_no_protocal = '//res.cloudinary.com/'.$account.'/image/upload/';
     	$site_url = get_bloginfo( 'url' );
     	$site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
-    	//prepare for multisite 
+    	//prepare for multisite, switch location of images to actual source
     	if(is_multisite()){
         	global $blog_id;
             //fix old rewrites to go directly to the file on multisite subfolder
             $content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $content );
     	} 
 	    //move anything trying to load wp-content files to pull them from the cdn
-	    $content = str_replace( $site_url . '/wp-content/', $cdn_fetch_prefix.$site_url_no_protocal . '/wp-content/', $content );
-	
+	    $cdn_fetch_options = "fl_lossy,f_auto,c_thumb";
+	    $content = preg_replace("/<img(.*)src=\"(http:|https:)?\/\/(".$site_url_no_protocal.")(.*)-(\d{3})x(\d{3})\.(.{3,4})\"(.*)>/i", "<img$1src=\"$2".$cdn_fetch_prefix_no_protocal.$cdn_fetch_options.",w_$5,h_$6/$3$4.$7\"$8>", $content); 
         return $content;
     }
     

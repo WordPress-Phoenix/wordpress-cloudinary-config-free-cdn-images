@@ -136,13 +136,14 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         
         //if image found then modify it with cloudinary optimimized replacement
     	if ( $img_url) {
+    	    $site_url = get_bloginfo( 'url' );
+    	    $site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
     		// we have the actual image size, but might need to further constrain it if content_width is narrower
     		list( $width, $height ) = image_constrain_size_for_editor( $width, $height, $size );
     		$cdn_fetch_options = static::get_cdn_options($height,$width);
     		//strip protocal from image URL
-    		$img_url = str_replace('http://',  '', $img_url);
-    		$img_url = str_replace('https://', '', $img_url);
-    		return array( 'http:'.$cdn_fetch_prefix.$cdn_fetch_options.'/'.$img_url, $width, $height, $is_intermediate );
+    		$cdn_img_url = preg_replace('/(http:|https:)?\/\/(.*)/i','$1'.$cdn_fetch_prefix.$cdn_fetch_options."/$2", $img_url);
+    		return array( $cdn_img_url, $width, $height, $is_intermediate );
     	}
     	
     	//if for some reason $img_url fails, disable filter by returning false

@@ -71,14 +71,14 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     }
     
     /**
-     * Filter all thumbnails and image attachments typically used in template parts, archive loops, and widgets
+     * Get the CDN Prefix URL that will proxy images
      */
     static function get_cdn_prefix($account) {
          return '//res.cloudinary.com/'.$account.'/image/upload/';
     }
     
     /**
-     * Filter all thumbnails and image attachments typically used in template parts, archive loops, and widgets
+     * Get default options to pass through CDN proxy
      */
     static function get_cdn_options($height = 0, $width = 0) {
         $cdn_fetch_options = "fl_lossy,f_auto,c_thumb";
@@ -96,16 +96,19 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      */
     static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {
     	$account = static::get_option_value('cloud_name');
-    	if(empty($account)){
+    	
+    	//if no account is set, do not continue
+    	if( empty($account) ){
     	    return false;
     	}
     	
+    	//prepare values for string replacements
     	$img_url = wp_get_attachment_url($id);
     	$meta = wp_get_attachment_metadata($id);
     	$width = $height = 0;
     	$is_intermediate = false;
     	$img_url_basename = wp_basename($img_url);
-    	$cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
+    	$cdn_fetch_prefix = static::get_cdn_prefix($account);
     	
     	// try for a new style intermediate size
     	if ( $intermediate = image_get_intermediate_size($id, $size) ) {
@@ -114,14 +117,16 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     		$original = image_get_intermediate_size($id, 'full');
     		$is_intermediate = true;
     	}
+    	
+    	// fall back to the old thumbnail
     	elseif ( $size == 'thumbnail' ) {
-    		// fall back to the old thumbnail
     		if ( ($thumb_file = wp_get_attachment_thumb_file($id)) && $info = getimagesize($thumb_file) ) {
     			$width = $info[0];
     			$height = $info[1];
     			$is_intermediate = true;
     		}
     	}
+    	
     	//make sure we have height and width values
     	if ( !$width && !$height && isset( $meta['width'], $meta['height'] ) ) {
     		// any other type: use the real image
@@ -133,11 +138,14 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     	if ( $img_url) {
     		// we have the actual image size, but might need to further constrain it if content_width is narrower
     		list( $width, $height ) = image_constrain_size_for_editor( $width, $height, $size );
+    		$cdn_fetch_options = static::get_cdn_options($height,$width);
+    		//strip protocal from image URL
     		$img_url = str_replace('http://',  '', $img_url);
     		$img_url = str_replace('https://', '', $img_url);
-    		$cdn_fetch_prefix .= "w_$width,h_$height,fl_lossy,f_auto,c_thumb,g_faces".'/';
-    		return array( $cdn_fetch_prefix.$img_url, $width, $height, $is_intermediate );
+    		return array( 'http:'.$cdn_fetch_prefix.$cdn_fetch_options.'/'.$img_url, $width, $height, $is_intermediate );
     	}
+    	
+    	//if for some reason $img_url fails, disable filter by returning false
     	return false;
     }
     

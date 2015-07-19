@@ -46,7 +46,7 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 		if ( ! in_the_loop() ) {
 			return $content;
 		}
-		$account = static::get_option_value('cloud_name'); // I dont think you need to set $account here, rather try doing if ( empty( static::get_option_value('cloud_name') ) )
+		$account = static::get_option_value( 'cloud_name' ); // I dont think you need to set $account here, rather try doing if ( empty( static::get_option_value('cloud_name') ) )
 		//if there is no account set, do not continue
 		if ( empty( $account ) ) {
 			return $content;

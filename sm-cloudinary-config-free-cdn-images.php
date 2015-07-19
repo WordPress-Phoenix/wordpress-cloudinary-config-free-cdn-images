@@ -5,7 +5,7 @@
  * Plugin URI: http://sethcarstens.com
  * Description: Enable your site to connect with your (freemium) Cloudinary account for a nearly configuration free setup. All you need to input in your username!
  * Author: Seth Carstens
- * Version: 1.0.0
+ * Version: 1.1
  * Author URI: http://sethcarstens.com
  * License: GPL 3.0
  * Text Domain: sm-ccfci
@@ -13,7 +13,7 @@
  * GitHub Plugin URI: https://github.com/WordPress-Phoenix/sm-cloudinary-config-free-cdn-images
  * GitHub Branch: master
  *
- * @package  		sm
+ * @package  		sm-ccfci
  * @category 		plugins
  * @author   		Seth Carstens <seth.carstens@gmail.com>
  * @dependencies    PHP5.5
@@ -56,18 +56,51 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         $cdn_fetch_prefix_no_protocal = static::get_cdn_prefix($account);
     	$site_url = get_bloginfo( 'url' );
     	$site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
-    	
+    	$cdn_content = $content;
     	//prepare for multisite, switch location of images to actual source
     	if(is_multisite()){
         	global $blog_id;
             //fix rewrite urls to go directly to the file within the multisite subfolder
-            $content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $content );
+            $cdn_content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $cdn_content );
     	} 
 	    
 	    //move any images that match the site source to pull them from the cdn
 	    $cdn_fetch_options = static::get_cdn_options();
-	    $content = preg_replace("/<img(.*)src=\"(http:|https:)?\/\/(".$site_url_no_protocal.")(.*)-(\d{3})x(\d{3})\.(.{3,4})\"(.*)>/i", "<img$1src=\"$2".$cdn_fetch_prefix_no_protocal.$cdn_fetch_options.",w_$5,h_$6/$3$4.$7\"$8>", $content); 
+        $cdn_content = preg_replace_callback("/<img(.*)src=\"(http:|https:)?\/\/(".$site_url_no_protocal.")(\/.*\/)((.*-(\d{3})x(\d{3}))|.*)?(\.[a-zA-Z]{3,4}\")([^>]+>)/im", array(get_called_class(),'callback_convert_image_source_to_cdn_url'), $cdn_content);
+        
+        //if preg replace function worked correctly, use the new CDN content
+        if( ! empty( $cdn_content ) ) {
+            return $cdn_content;
+        }
+        //otherwise return the regular content
         return $content;
+    }
+    
+    
+    static function callback_convert_image_source_to_cdn_url($v){
+        $account = static::get_option_value('cloud_name');
+        $cdn_fetch_prefix_no_protocal = static::get_cdn_prefix($account);
+        $cdn_fetch_options = static::get_cdn_options().static::maybe_width_and_height($v[7],$v[8]);
+        
+        //rebuild the image tag using the CDN proxy based on matching parts
+        $cdn_image_url  = '<img'.$v[1].'src="'.$v[2];
+        $cdn_image_url .= $cdn_fetch_prefix_no_protocal.$cdn_fetch_options;
+        $cdn_image_url .= '/'.$v[3].$v[4].preg_replace('/-(\d{3})x(\d{3})/','',$v[5]).$v[9].$v[10];
+        //debugging options - uncomment to debug
+        //echo '<hr/>DEBUG PREG MATCH:<br/>'.htmlentities(var_export($v,true));
+        //echo '<br>@@@ '.htmlentities($cdn_image_url).'<hr/>';
+        return $cdn_image_url;
+    }
+    
+    
+    static function maybe_width_and_height($w, $h, $w2=0, $h2=0) {
+        if( ! empty($w) ){
+            return ",w_$w,h_$h";
+        } elseif( ! empty($w2) ) {
+            return ",w_$w2,h_$h2";
+        } else {
+            return '';
+        }
     }
     
     /**

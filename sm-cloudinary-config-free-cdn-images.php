@@ -32,8 +32,8 @@ class SM_Cloudinary_Config_Free_CDN_Images{
             return;
         }
         //filter the image URL's on downsize so all functions that create thumbnails and featured images are modified to pull from the CDN
-        add_filter('image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3);
-        add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
+        add_filter( 'image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3 );
+        add_filter( 'plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
         add_action( 'activated_plugin', array(get_called_class(), 'activated') );
     	add_filter( 'the_content', array( get_called_class(), 'convert_the_content_images_to_cloudinary_pull_request'), 20 );
@@ -65,7 +65,7 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     	} 
 	    
 	    //move any images that match the site source to pull them from the cdn
-	    $cdn_fetch_options = "fl_lossy,f_auto,c_thumb";
+	    $cdn_fetch_options = static::get_cdn_options();
 	    $content = preg_replace("/<img(.*)src=\"(http:|https:)?\/\/(".$site_url_no_protocal.")(.*)-(\d{3})x(\d{3})\.(.{3,4})\"(.*)>/i", "<img$1src=\"$2".$cdn_fetch_prefix_no_protocal.$cdn_fetch_options.",w_$5,h_$6/$3$4.$7\"$8>", $content); 
         return $content;
     }
@@ -75,6 +75,20 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      */
     static function get_cdn_prefix($account) {
          return '//res.cloudinary.com/'.$account.'/image/upload/';
+    }
+    
+    /**
+     * Filter all thumbnails and image attachments typically used in template parts, archive loops, and widgets
+     */
+    static function get_cdn_options($height = 0, $width = 0) {
+        $cdn_fetch_options = "fl_lossy,f_auto,c_thumb";
+        if( ! empty($width) ){
+            $cdn_fetch_options .= ',w_'.$width;
+        }
+        if( ! empty($height) ){
+            $cdn_fetch_options .= ',h_'.$height;
+        }
+        return $cdn_fetch_options;
     }
     
     /**

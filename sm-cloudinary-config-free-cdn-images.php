@@ -5,7 +5,7 @@
  * Plugin URI: http://sethcarstens.com
  * Description: Enable your site to connect with your (freemium) Cloudinary account for a nearly configuration free setup. All you need to input in your username!
  * Author: Seth Carstens
- * Version: 1.0.0
+ * Version: 1.1
  * Author URI: http://sethcarstens.com
  * License: GPL 3.0
  * Text Domain: sm-ccfci
@@ -13,7 +13,7 @@
  * GitHub Plugin URI: https://github.com/WordPress-Phoenix/sm-cloudinary-config-free-cdn-images
  * GitHub Branch: master
  *
- * @package  		sm
+ * @package  		sm-ccfci
  * @category 		plugins
  * @author   		Seth Carstens <seth.carstens@gmail.com>
  * @dependencies    PHP5.5
@@ -32,8 +32,8 @@ class SM_Cloudinary_Config_Free_CDN_Images{
             return;
         }
         //filter the image URL's on downsize so all functions that create thumbnails and featured images are modified to pull from the CDN
-        add_filter('image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3);
-        add_filter('plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
+        add_filter( 'image_downsize', array(get_called_class(), 'convert_get_attachment_to_cloudinary_pull_request'), 1, 3 );
+        add_filter( 'plugin_action_links_'.plugin_basename(__FILE__), array(get_called_class(), 'add_plugin_settings_link') );
         add_action( 'admin_init', array(get_called_class(), 'register_wordpress_settings') );
         add_action( 'activated_plugin', array(get_called_class(), 'activated') );
     	add_filter( 'the_content', array( get_called_class(), 'convert_the_content_images_to_cloudinary_pull_request'), 20 );
@@ -47,19 +47,81 @@ class SM_Cloudinary_Config_Free_CDN_Images{
             return $content;
         }
         $account = static::get_option_value('cloud_name');
-        $cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
+        //if there is no account set, do not continue
+        if( empty($account) ) {
+            return $content;
+        }
+        
+        //prepare new values for use in string replacements
+        $cdn_fetch_prefix_no_protocal = static::get_cdn_prefix($account);
     	$site_url = get_bloginfo( 'url' );
     	$site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
-    	//prepare for multisite 
+    	$cdn_content = $content;
+    	//prepare for multisite, switch location of images to actual source
     	if(is_multisite()){
         	global $blog_id;
-            //fix old rewrites to go directly to the file on multisite subfolder
-            $content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $content );
+            //fix rewrite urls to go directly to the file within the multisite subfolder
+            $cdn_content = str_replace( $site_url . '/files/', $site_url.'/wp-content/blogs.dir/' . $blog_id . '/files/', $cdn_content );
     	} 
-	    //move anything trying to load wp-content files to pull them from the cdn
-	    $content = str_replace( $site_url . '/wp-content/', $cdn_fetch_prefix.$site_url_no_protocal . '/wp-content/', $content );
-	
+	    
+	    //move any images that match the site source to pull them from the cdn
+	    $cdn_fetch_options = static::get_cdn_options();
+        $cdn_content = preg_replace_callback("/<img(.*)src=\"(http:|https:)?\/\/(".$site_url_no_protocal.")(\/.*\/)((.*-(\d{3})x(\d{3}))|.*)?(\.[a-zA-Z]{3,4}\")([^>]+>)/im", array(get_called_class(),'callback_convert_image_source_to_cdn_url'), $cdn_content);
+        
+        //if preg replace function worked correctly, use the new CDN content
+        if( ! empty( $cdn_content ) ) {
+            return $cdn_content;
+        }
+        //otherwise return the regular content
         return $content;
+    }
+    
+    
+    static function callback_convert_image_source_to_cdn_url($v){
+        $account = static::get_option_value('cloud_name');
+        $cdn_fetch_prefix_no_protocal = static::get_cdn_prefix($account);
+        $cdn_fetch_options = static::get_cdn_options().static::maybe_width_and_height($v[7],$v[8]);
+        
+        //rebuild the image tag using the CDN proxy based on matching parts
+        $cdn_image_url  = '<img'.$v[1].'src="'.$v[2];
+        $cdn_image_url .= $cdn_fetch_prefix_no_protocal.$cdn_fetch_options;
+        $cdn_image_url .= '/'.$v[3].$v[4].preg_replace('/-(\d{3})x(\d{3})/','',$v[5]).$v[9].$v[10];
+        //debugging options - uncomment to debug
+        //echo '<hr/>DEBUG PREG MATCH:<br/>'.htmlentities(var_export($v,true));
+        //echo '<br>@@@ '.htmlentities($cdn_image_url).'<hr/>';
+        return $cdn_image_url;
+    }
+    
+    
+    static function maybe_width_and_height($w, $h, $w2=0, $h2=0) {
+        if( ! empty($w) ){
+            return ",w_$w,h_$h";
+        } elseif( ! empty($w2) ) {
+            return ",w_$w2,h_$h2";
+        } else {
+            return '';
+        }
+    }
+    
+    /**
+     * Get the CDN Prefix URL that will proxy images
+     */
+    static function get_cdn_prefix($account) {
+         return '//res.cloudinary.com/'.$account.'/image/upload/';
+    }
+    
+    /**
+     * Get default options to pass through CDN proxy
+     */
+    static function get_cdn_options($height = 0, $width = 0) {
+        $cdn_fetch_options = "fl_lossy,f_auto,c_thumb";
+        if( ! empty($width) ){
+            $cdn_fetch_options .= ',w_'.$width;
+        }
+        if( ! empty($height) ){
+            $cdn_fetch_options .= ',h_'.$height;
+        }
+        return $cdn_fetch_options;
     }
     
     /**
@@ -67,16 +129,19 @@ class SM_Cloudinary_Config_Free_CDN_Images{
      */
     static function convert_get_attachment_to_cloudinary_pull_request($override, $id, $size) {
     	$account = static::get_option_value('cloud_name');
-    	if(empty($account)){
+    	
+    	//if no account is set, do not continue
+    	if( empty($account) ){
     	    return false;
     	}
     	
+    	//prepare values for string replacements
     	$img_url = wp_get_attachment_url($id);
     	$meta = wp_get_attachment_metadata($id);
     	$width = $height = 0;
     	$is_intermediate = false;
     	$img_url_basename = wp_basename($img_url);
-    	$cdn_fetch_prefix = 'https://res.cloudinary.com/'.$account.'/image/upload/';
+    	$cdn_fetch_prefix = static::get_cdn_prefix($account);
     	
     	// try for a new style intermediate size
     	if ( $intermediate = image_get_intermediate_size($id, $size) ) {
@@ -85,14 +150,16 @@ class SM_Cloudinary_Config_Free_CDN_Images{
     		$original = image_get_intermediate_size($id, 'full');
     		$is_intermediate = true;
     	}
+    	
+    	// fall back to the old thumbnail
     	elseif ( $size == 'thumbnail' ) {
-    		// fall back to the old thumbnail
     		if ( ($thumb_file = wp_get_attachment_thumb_file($id)) && $info = getimagesize($thumb_file) ) {
     			$width = $info[0];
     			$height = $info[1];
     			$is_intermediate = true;
     		}
     	}
+    	
     	//make sure we have height and width values
     	if ( !$width && !$height && isset( $meta['width'], $meta['height'] ) ) {
     		// any other type: use the real image
@@ -102,13 +169,17 @@ class SM_Cloudinary_Config_Free_CDN_Images{
         
         //if image found then modify it with cloudinary optimimized replacement
     	if ( $img_url) {
+    	    $site_url = get_bloginfo( 'url' );
+    	    $site_url_no_protocal = preg_replace('/http[s]?:\/\//','',$site_url);
     		// we have the actual image size, but might need to further constrain it if content_width is narrower
     		list( $width, $height ) = image_constrain_size_for_editor( $width, $height, $size );
-    		$img_url = str_replace('http://',  '', $img_url);
-    		$img_url = str_replace('https://', '', $img_url);
-    		$cdn_fetch_prefix .= "w_$width,h_$height,fl_lossy,f_auto,c_thumb,g_faces".'/';
-    		return array( $cdn_fetch_prefix.$img_url, $width, $height, $is_intermediate );
+    		$cdn_fetch_options = static::get_cdn_options($height,$width);
+    		//strip protocal from image URL
+    		$cdn_img_url = preg_replace('/(http:|https:)?\/\/(.*)/i','$1'.$cdn_fetch_prefix.$cdn_fetch_options."/$2", $img_url);
+    		return array( $cdn_img_url, $width, $height, $is_intermediate );
     	}
+    	
+    	//if for some reason $img_url fails, disable filter by returning false
     	return false;
     }
     

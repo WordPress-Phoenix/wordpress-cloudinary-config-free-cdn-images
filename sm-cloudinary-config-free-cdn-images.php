@@ -22,11 +22,15 @@
  * - Hooked into image_downsize so all images called by WordPress attachment functionions are properly reconfigured to be pulled from the CDN isntead.
  * - During the update of the image source, we pass the "original uploaded image" to the CDN and then ask the CDN for images perfectly sized for the thumbnail crops defined in WordPress.
  * - The uploaded media files and all thumbnail crops remain on the server even though they are not used in order to provide the ability to move away from Cloudinary at any time. Never jailed.
+ * TODO: switch images to "lazy loading"
+ * TODO: http://davidwalsh.name/detect-gif-animated detect animated gifs and convert to mp4 tags
  */
 
 class SM_Cloudinary_Config_Free_CDN_Images {
+    
+    static $text_domain = 'sm-ccfci';
 
-	public function __construct() {
+	function __construct() {
 		//allow temprorary disabling of the CDN for debugging and A/B testing
 		if ( ! empty( $_GET['cloudinary'] ) &&  $_GET['cloudinary'] == false ) {
 			return;
@@ -46,7 +50,8 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 		if ( ! in_the_loop() ) {
 			return $content;
 		}
-		$account = static::get_option_value( 'cloud_name' ); // I dont think you need to set $account here, rather try doing if ( empty( static::get_option_value('cloud_name') ) )
+		//setup account name for use with get_cdn_prefix()
+		$account = static::get_option_value( 'cloud_name' );
 		//if there is no account set, do not continue
 		if ( empty( $account ) ) {
 			return $content;
@@ -187,7 +192,7 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 	 * Add settings link on plugin page
 	 */
 	static function add_plugin_settings_link( $links ) {
-	  $settings_link = '<a href="' . admin_url( 'options-media.php#section_sm_cloudinary_config_free_cdn_images' ) . '">Settings</a>'; // esc_url on admin_url
+	  $settings_link = '<a href="' . esc_url( admin_url( 'options-media.php#section_sm_cloudinary_config_free_cdn_images' ) ) . '">Settings</a>';
 	  array_unshift( $links, $settings_link );
 	  return $links;
 	}
@@ -216,7 +221,7 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 			array(
 				'type' => 'input',
 				'name' => $field_prefix_from_class . '_' . $field_name_1,
-				'description' => 'Your Cloudinary cloud name can be found on your <a href="https://cloudinary.com/console" target="_blank">dashboard</a>' // _esc_html__() on the hard coded text here
+				'description' => esc_html( __( 'Your Cloudinary cloud name can be found on your <a href="https://cloudinary.com/console" target="_blank">dashboard</a>', 'sm') )
 			)
 		);
 
@@ -230,7 +235,11 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 	 */
 	function wordpress_settings_api_form_field_builder( $args, $print = true ) {
 		$field_prefix_from_class = strtolower( get_called_class() );
-		$field_html = '<input name="' . $args['name'] . '" id="' . $args['name'] . '" type="' . $args['type'] . '" value="' . get_option( $args['name'] ) . '" autocomplete="off" /> <br />' . $args['description']; // esc_attr() on all of these
+		$field_html = '<input name="' . esc_attr( $args['name'] ) . '" id="' . 
+			esc_attr( $args['name'] ) . '" type="' . 
+			esc_attr( $args['type'] ) . '" value="' . 
+			esc_attr( get_option( $args['name'] ) ) . '" autocomplete="off" /> <br />' . 
+			esc_attr( $args['description'] ); 
 		if( ! empty( $print ) ){
 			echo $field_html;
 		}

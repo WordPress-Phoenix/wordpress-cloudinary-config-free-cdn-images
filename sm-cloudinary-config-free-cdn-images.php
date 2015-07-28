@@ -5,7 +5,7 @@
  * Plugin URI: http://sethcarstens.com
  * Description: Enable your site to connect with your (freemium) Cloudinary account for a nearly configuration free setup. All you need to input in your username!
  * Author: Seth Carstens
- * Version: 1.1
+ * Version: 1.1.2
  * Author URI: http://sethcarstens.com
  * License: GPL 3.0
  * Text Domain: sm-ccfci
@@ -119,7 +119,9 @@ class SM_Cloudinary_Config_Free_CDN_Images {
 	 * Get default options to pass through CDN proxy
 	 */
 	static function get_cdn_options( $height = 0, $width = 0 ) {
-		$cdn_fetch_options = 'fl_lossy,f_auto,c_thumb';
+		//TODO: Allow cdn fetch options to be optional in an "advanced" dropdown in the admin settings area
+		//TODO: Allow different fetch options based on height or width max or min
+		$cdn_fetch_options = 'fl_lossy,f_auto,c_thumb,q_80';
 		if( ! empty( $width ) ){
 			$cdn_fetch_options .= ',w_' . $width;
 		}
